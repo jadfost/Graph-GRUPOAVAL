@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  graph-api:
+    build: .
+    container_name: graph-api-container
+    volumes:
+      - ./app:/app
+    command: python /app/GraphApi.py

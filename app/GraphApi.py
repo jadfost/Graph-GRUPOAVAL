@@ -30,7 +30,7 @@ def create_group(access_token, group_data):
         'Content-Type': 'application/json'
     }
     url = f"{graph_url}/groups"
-    response = requests.post(url, headers=headers, json=group_data)
+    response = requests.post(url, headers=headers, json=group_data, verify=False)  # Desactiva la verificación SSL
     response.raise_for_status()
     return response.json()
 
@@ -41,7 +41,7 @@ def create_user(access_token, user_data):
         'Content-Type': 'application/json'
     }
     url = f"{graph_url}/users"
-    response = requests.post(url, headers=headers, json=user_data)
+    response = requests.post(url, headers=headers, json=user_data, verify=False)  # Desactiva la verificación SSL
     
     # Verifica si la respuesta tiene contenido JSON
     if response.status_code == 201:  # 201 Created es esperado al crear un usuario
@@ -63,7 +63,7 @@ def add_user_to_group(access_token, user_id, group_id):
     body = {
         "@odata.id": f"{graph_url}/directoryObjects/{user_id}"
     }
-    response = requests.post(url, headers=headers, json=body)
+    response = requests.post(url, headers=headers, json=body, verify=False)  # Desactiva la verificación SSL
     response.raise_for_status()
     
     # Verificar si la respuesta tiene contenido
