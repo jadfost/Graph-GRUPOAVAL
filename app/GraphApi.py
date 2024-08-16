@@ -88,6 +88,37 @@ def add_user_to_group(access_token, user_id, group_id):
     response = requests.post(url, headers=headers, json=body, verify=False)
     response.raise_for_status()
 
+# Obtener los roles de la aplicación
+def get_app_roles(access_token, service_principal_id):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    url = f"{graph_url}/servicePrincipals/{service_principal_id}/appRoles"
+    response = requests.get(url, headers=headers, verify=False)
+    response.raise_for_status()
+    data = response.json()
+    return data.get('value', [])  # Asegúrate de que retorna una lista
+
+# Asignar grupo al rol `msiam_access` de la aplicación
+def assign_group_to_app_role(access_token, group_id, service_principal_id, app_role_id):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    url = f"{graph_url}/servicePrincipals/{service_principal_id}/appRoleAssignments"
+    body = {
+        "principalId": group_id,
+        "resourceId": service_principal_id,
+        "appRoleId": app_role_id
+    }
+    response = requests.post(url, headers=headers, json=body, verify=False)
+    response.raise_for_status()
+    return response.json()
+
+# ID de la Enterprise Application "API-driven provisioning to Microsoft Entra ID"
+service_principal_id = '1b448c25-42f9-4200-b514-578835f61fe1'
+
 # Leer datos del Excel
 df = pd.read_excel('RESULTS_FINAL.xlsx')
 
@@ -132,4 +163,22 @@ for group, group_id in group_ids.items():
         else:
             print(f"Usuario con correo {row['mail']} no encontrado en Azure AD")
 
-print("Proceso completado.")
+# 3. Obtener los roles de la aplicación y encontrar el rol `msiam_access`
+app_roles = get_app_roles(access_token, service_principal_id)
+print(f"Roles obtenidos: {app_roles}")
+
+msiam_access_role = next((role for role in app_roles if role['displayName'] == 'msiam_access'), None)
+
+if msiam_access_role:
+    app_role_id = msiam_access_role['id']
+    # Asignar grupos al rol `msiam_access`
+    for group_name, group_id in group_ids.items():
+        try:
+            assign_group_to_app_role(access_token, group_id, service_principal_id, app_role_id)
+            print(f"Grupo {group_name} asignado al rol `msiam_access` de la Enterprise Application.")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error al asignar el grupo {group_name} al rol `msiam_access`: {e}")
+else:
+    print("El rol `msiam_access` no se encontró en la Enterprise Application.")
+
+print("Proceso de asignación completado.")
