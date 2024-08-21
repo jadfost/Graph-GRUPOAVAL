@@ -2,7 +2,6 @@ import requests
 import json
 import pandas as pd
 import time
-from urllib.parse import urlencode
 
 # Configuración de autenticación
 tenant_id = 'ccd33858-8dfe-4420-a02f-1f83e7b28d9d'
@@ -101,26 +100,8 @@ def get_app_roles(access_token, service_principal_id):
     data = response.json()
     return data.get('value', [])  # Asegúrate de que retorna una lista
 
-# Verificar si el grupo ya tiene asignado el rol
-def is_group_assigned_to_role(access_token, group_id, service_principal_id, app_role_id):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    # Obtener todas las asignaciones de roles para este service principal
-    url = f"{graph_url}/servicePrincipals/{service_principal_id}/appRoleAssignments"
-    response = requests.get(url, headers=headers, verify=False)
-    response.raise_for_status()
-    assignments = response.json().get('value', [])
-
-    # Filtrar localmente para verificar si el grupo ya tiene el rol asignado
-    for assignment in assignments:
-        if assignment['principalId'] == group_id and assignment['appRoleId'] == app_role_id:
-            return True
-    return False
-
 # Asignar grupo al rol `msiam_access` de la aplicación
-def assign_group_to_app_role(access_token, group_name, group_id, service_principal_id, app_role_id):
+def assign_group_to_app_role(access_token, group_id, service_principal_id, app_role_id):
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json'
@@ -131,22 +112,15 @@ def assign_group_to_app_role(access_token, group_name, group_id, service_princip
         "resourceId": service_principal_id,
         "appRoleId": app_role_id
     }
-    try:
-        response = requests.post(url, headers=headers, json=body, verify=False)
-        response.raise_for_status()
-        print(f"Grupo {group_name} asignado al rol `msiam_access` de la Enterprise Application.")
-    except requests.exceptions.HTTPError as e:
-        error_response = e.response.json()
-        if error_response.get('error', {}).get('message') == 'Permission being assigned already exists on the object':
-            print(f"El grupo {group_name} ya tiene asignado el rol `msiam_access` y no será agregado nuevamente.")
-        else:
-            raise
+    response = requests.post(url, headers=headers, json=body, verify=False)
+    response.raise_for_status()
+    return response.json()
 
 # ID de la Enterprise Application "API-driven provisioning to Microsoft Entra ID"
 service_principal_id = '1b448c25-42f9-4200-b514-578835f61fe1'
 
-# Leer datos del CSV en lugar del Excel
-df = pd.read_csv('CONSOLIDADO.csv', delimiter=';')
+# Leer datos del Excel
+df = pd.read_excel('RESULTS_FINAL.xlsx')
 
 # Obtener token de acceso
 access_token = get_access_token()
@@ -200,13 +174,10 @@ if msiam_access_role:
     # Asignar grupos al rol `msiam_access`
     for group_name, group_id in group_ids.items():
         try:
-            if is_group_assigned_to_role(access_token, group_id, service_principal_id, app_role_id):
-                print(f"El grupo {group_name} ya hace parte del Enterprise Application con rol `msiam_access`.")
-            else:
-                assign_group_to_app_role(access_token, group_name, group_id, service_principal_id, app_role_id)
+            assign_group_to_app_role(access_token, group_id, service_principal_id, app_role_id)
+            print(f"Grupo {group_name} asignado al rol `msiam_access` de la Enterprise Application.")
         except requests.exceptions.HTTPError as e:
-            error_response = e.response.json()
-            print(f"Error al asignar el grupo {group_name} al rol `msiam_access`: {error_response}")
+            print(f"Error al asignar el grupo {group_name} al rol `msiam_access`: {e}")
 else:
     print("El rol `msiam_access` no se encontró en la Enterprise Application.")
 
