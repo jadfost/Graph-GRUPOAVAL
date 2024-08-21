@@ -2,6 +2,7 @@ import requests
 import json
 import pandas as pd
 import time
+import math
 from urllib.parse import urlencode
 
 # Configuración de autenticación
@@ -24,6 +25,66 @@ def get_access_token():
     response = requests.post(token_url, data=data, verify=False)
     response.raise_for_status()
     return response.json().get('access_token')
+
+# Función para agregar múltiples usuarios a un grupo utilizando batch requests
+def add_users_to_group_batch(access_token, group_id, user_ids):
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+
+    batch_size = 20  # Tamaño máximo permitido por batch request
+    total_batches = math.ceil(len(user_ids) / batch_size)
+
+    for i in range(total_batches):
+        batch_request = {
+            "requests": []
+        }
+
+        start_index = i * batch_size
+        end_index = start_index + batch_size
+        batch_user_ids = user_ids[start_index:end_index]
+
+        # Construir las solicitudes para cada usuario en el batch
+        for j, user_id in enumerate(batch_user_ids):
+            batch_request["requests"].append({
+                "id": f"{i}-{j}",
+                "method": "POST",
+                "url": f"/groups/{group_id}/members/$ref",
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                "body": {
+                    "@odata.id": f"https://graph.microsoft.com/v1.0/directoryObjects/{user_id}"
+                }
+            })
+
+        # Enviar la solicitud batch
+        url = f"{graph_url}/$batch"
+        response = requests.post(url, headers=headers, json=batch_request, verify=False)
+        response.raise_for_status()
+
+        # Manejar la respuesta
+        results = response.json().get('responses', [])
+        for result in results:
+            if result.get('status') != 204:  # 204 No Content indica éxito
+                print(f"Error al agregar usuario con ID {batch_user_ids[int(result['id'].split('-')[1])]}: {result.get('body')}")
+
+# Función para obtener todos los miembros de un grupo con paginación
+def get_group_members(access_token, group_id):
+    members = []
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    url = f"{graph_url}/groups/{group_id}/members"
+    while url:
+        response = requests.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        data = response.json()
+        members.extend(data.get('value', []))
+        url = data.get('@odata.nextLink', None)
+    return {member['id'] for member in members}
 
 # Verificar si el grupo existe
 def get_group_by_name(access_token, group_name):
@@ -59,35 +120,6 @@ def get_user_by_email(access_token, email):
     response.raise_for_status()
     users = response.json().get('value', [])
     return users[0] if users else None
-
-# Obtener todos los miembros de un grupo
-def get_group_members(access_token, group_id):
-    members = []
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    url = f"{graph_url}/groups/{group_id}/members"
-    while url:
-        response = requests.get(url, headers=headers, verify=False)
-        response.raise_for_status()
-        data = response.json()
-        members.extend(data.get('value', []))
-        url = data.get('@odata.nextLink', None)
-    return {member['id'] for member in members}
-
-# Añadir usuario al grupo
-def add_user_to_group(access_token, user_id, group_id):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    url = f"{graph_url}/groups/{group_id}/members/$ref"
-    body = {
-        "@odata.id": f"{graph_url}/directoryObjects/{user_id}"
-    }
-    response = requests.post(url, headers=headers, json=body, verify=False)
-    response.raise_for_status()
 
 # Obtener los roles de la aplicación
 def get_app_roles(access_token, service_principal_id):
@@ -174,20 +206,19 @@ for group, group_id in group_ids.items():
     # Obtener los miembros actuales del grupo
     current_members = get_group_members(access_token, group_id)
 
-    # Filtrar usuarios que no estén ya en el grupo
+    # Recopilar los usuarios que no están en el grupo
+    users_to_add = []
     for index, row in df[df['GROUP'] == group].iterrows():
         user = get_user_by_email(access_token, row['mail'])
-        if user:
-            if user['id'] not in current_members:
-                try:
-                    add_user_to_group(access_token, user['id'], group_id)
-                    print(f"Usuario {row['mail']} añadido al grupo {group}")
-                except requests.exceptions.HTTPError as e:
-                    print(f"Error al añadir el usuario {row['mail']} al grupo {group}: {e}")
-            else:
-                print(f"El usuario {row['mail']} ya es miembro del grupo {group}")
-        else:
+        if user and user['id'] not in current_members:
+            users_to_add.append(user['id'])
+        elif not user:
             print(f"Usuario con correo {row['mail']} no encontrado en Azure AD")
+
+    # Agregar usuarios al grupo en batch
+    if users_to_add:
+        add_users_to_group_batch(access_token, group_id, users_to_add)
+        print(f"Usuarios añadidos al grupo {group}: {users_to_add}")
 
 # 3. Obtener los roles de la aplicación y encontrar el rol `msiam_access`
 app_roles = get_app_roles(access_token, service_principal_id)
