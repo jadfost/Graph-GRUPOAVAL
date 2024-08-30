@@ -1,5 +1,3 @@
-[[![Quality gate](http://localhost:9000/api/project_badges/quality_gate?project=GrupoAval&token=sqb_175d160539c9a2c11a415cd1374ebb0ad8b19267)](http://localhost:9000/dashboard?id=GrupoAval)
-](http://localhost:9000/api/project_badges/measure?project=GrupoAval&metric=alert_status&token=sqb_175d160539c9a2c11a415cd1374ebb0ad8b19267)
 
 # DjangoDocker
 
