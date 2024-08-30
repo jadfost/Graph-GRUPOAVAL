@@ -1,3 +1,5 @@
+[![Quality gate](http://localhost:9000/api/project_badges/quality_gate?project=GrupoAval&token=sqb_1c40f98916dda0069d0891215ef146411e9ca984)](http://localhost:9000/dashboard?id=GrupoAval)
+
 # DjangoDocker
 
 Este proyecto es una configuración básica de Docker para una aplicación Django. Sigue los pasos a continuación para configurar y ejecutar el proyecto en tu máquina local.
