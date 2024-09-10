@@ -2,11 +2,16 @@ import requests
 import json
 import pandas as pd
 import time
+from dotenv import load_dotenv
+import os
+
+# Cargar las variables desde el archivo .env
+load_dotenv()
 
 # Configuración de autenticación
-tenant_id = 'ccd33858-8dfe-4420-a02f-1f83e7b28d9d'
-client_id = '4f68d916-5f48-45f3-8ab3-5b88b89a1eea'
-client_secret = 'ive8Q~lYsM5J1GsGXW5me5oSgn3Ev.T_sbU_Nb_n'
+tenant_id = os.getenv('TENANT_ID')
+client_id = os.getenv('CLIENT_ID')
+client_secret = os.getenv('CLIENT_SECRET')
 
 # URLs de Microsoft Graph API
 token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"

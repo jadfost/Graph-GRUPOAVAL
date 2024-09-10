@@ -6,4 +6,6 @@ services:
     container_name: graph-api-container
     volumes:
       - ./app:/app
+    env_file:
+      - .env  # Añadir esta línea
     command: python /app/GraphApi.py
