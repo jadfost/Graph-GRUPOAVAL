@@ -1,0 +1,6 @@
+projectKey=GrupoAval
+serverUrl=http://localhost:9000
+serverVersion=10.6.0.92116
+dashboardUrl=http://localhost:9000/dashboard?id=GrupoAval
+ceTaskId=12bf06d2-a88e-4033-bdfe-c9f784c0b2d5
+ceTaskUrl=http://localhost:9000/api/ce/task?id=12bf06d2-a88e-4033-bdfe-c9f784c0b2d5
