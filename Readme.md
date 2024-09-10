@@ -1,3 +1,4 @@
+
 # DjangoDocker
 
 Este proyecto es una configuración básica de Docker para una aplicación Django. Sigue los pasos a continuación para configurar y ejecutar el proyecto en tu máquina local.
